@@ -29,6 +29,7 @@
     width: 100%;
     height: auto;
     display: block;
+    transition: opacity 0.15s ease-in-out;
   }
 
   .slider-container {
@@ -93,7 +94,8 @@
   <div class="slider-container">
     <div class="slider-label">Vesicle diameter (nm)</div>
     <div class="value-display" id="valueDisplay">5 nm</div>
-    <input type="range" id="vesicleSlider" min="1" max="20" step="1" value="1">
+    <!-- No "step" attribute for smooth sliding -->
+    <input type="range" id="vesicleSlider" min="1" max="20" value="1">
   </div>
 </div>
 
@@ -102,7 +104,6 @@
   const image = document.getElementById('vesicleImage');
   const valueDisplay = document.getElementById('valueDisplay');
 
-  // Image files in the same directory as index.html
   const imageFiles = [
     './0001.png','./0002.png','./0003.png','./0004.png','./0005.png',
     './0006.png','./0007.png','./0008.png','./0009.png','./0010.png',
@@ -110,20 +111,34 @@
     './0016.png','./0017.png','./0018.png','./0019.png','./0020.png'
   ];
 
-  const diameterValues = Array.from({ length: 20 }, (_, i) => 5 + i * 5);
-
-  // Determine correct base path dynamically (ensures relative paths work on GitHub Pages)
+  const diameters = Array.from({ length: 20 }, (_, i) => 5 + i * 5);
   const basePath = window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1);
 
-  function updateImage() {
-    const index = parseInt(slider.value) - 1;
-    const filePath = basePath + imageFiles[index].replace('./', '');
-    image.src = filePath;
-    valueDisplay.textContent = `${diameterValues[index]} nm`;
+  // Preload images for smooth transitions
+  imageFiles.forEach(src => { const img = new Image(); img.src = basePath + src.replace('./', ''); });
 
+  function updateImage() {
+    // Compute fractional index for smooth dragging
+    const rawValue = parseFloat(slider.value);
+    const index = Math.min(imageFiles.length - 1, Math.max(0, rawValue - 1));
+    const roundedIndex = Math.round(index);
+
+    // Update image and label
+    image.src = basePath + imageFiles[roundedIndex].replace('./', '');
+    const diameter = diameters[roundedIndex];
+    valueDisplay.textContent = `${diameter} nm`;
+
+    // Keep label centered above thumb, but within slider bounds
     const sliderRect = slider.getBoundingClientRect();
+    const bubbleRect = valueDisplay.getBoundingClientRect();
     const handlePos = (index / (imageFiles.length - 1)) * sliderRect.width;
-    valueDisplay.style.left = `${handlePos}px`;
+    let bubbleLeft = handlePos;
+
+    const minLeft = bubbleRect.width / 2;
+    const maxLeft = sliderRect.width - bubbleRect.width / 2;
+    bubbleLeft = Math.min(Math.max(bubbleLeft, minLeft), maxLeft);
+
+    valueDisplay.style.left = `${bubbleLeft}px`;
   }
 
   slider.addEventListener('input', updateImage);
