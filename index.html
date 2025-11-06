@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vesicle Diameter Viewer</title>
+<style>
+  body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    height: 100vh;
+    margin: 0;
+    font-family: sans-serif;
+  }
+
+  .viewer-container {
+    position: relative;
+    width: 600px; /* adjust as needed */
+    max-width: 90vw;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    overflow: hidden;
+  }
+
+  .viewer-container img {
+    width: 100%;
+    display: block;
+  }
+
+  .slider-container {
+    position: relative;
+    padding: 20px;
+    background: #f0f0f0;
+  }
+
+  .slider-label {
+    text-align: center;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+
+  .value-display {
+    position: absolute;
+    top: -28px;
+    transform: translateX(-50%);
+    background: #343a40;
+    color: white;
+    padding: 2px 6px;
+    border-radius: 6px;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  input[type=range] {
+    width: 100%;
+    -webkit-appearance: none;
+    background: transparent;
+  }
+
+  input[type=range]::-webkit-slider-runnable-track {
+    height: 6px;
+    background: #ccc;
+    border-radius: 3px;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: #007bff;
+    cursor: pointer;
+    margin-top: -5px;
+  }
+
+  input[type=range]:focus {
+    outline: none;
+  }
+</style>
+</head>
+<body>
+
+<div class="viewer-container">
+  <img id="vesicleImage" src="images/0001.png" alt="Vesicle image">
+  <div class="slider-container">
+    <div class="slider-label">Vesicle diameter (nm)</div>
+    <div class="value-display" id="valueDisplay">5 nm</div>
+    <input type="range" id="vesicleSlider" min="1" max="20" step="1" value="1">
+  </div>
+</div>
+
+<script>
+  const slider = document.getElementById('vesicleSlider');
+  const image = document.getElementById('vesicleImage');
+  const valueDisplay = document.getElementById('valueDisplay');
+  const totalImages = 20;
+  const minDiameter = 5;
+  const maxDiameter = 100;
+  const increment = (maxDiameter - minDiameter) / (totalImages - 1);
+
+  // Preload images
+  const images = [];
+  for (let i = 1; i <= totalImages; i++) {
+    const img = new Image();
+    img.src = `images/${String(i).padStart(4, '0')}.png`;
+    images.push(img);
+  }
+
+  function updateImage() {
+    const index = parseInt(slider.value);
+    const diameter = minDiameter + (index - 1) * increment;
+    image.src = `images/${String(index).padStart(4, '0')}.png`;
+    valueDisplay.textContent = `${diameter} nm`;
+
+    // Move the value display above the handle
+    const sliderRect = slider.getBoundingClientRect();
+    const handlePos = ((index - 1) / (totalImages - 1)) * sliderRect.width;
+    valueDisplay.style.left = `${handlePos}px`;
+  }
+
+  slider.addEventListener('input', updateImage);
+  window.addEventListener('resize', updateImage);
+
+  updateImage(); // initial position
+</script>
+
+</body>
+</html>
