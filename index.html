@@ -7,34 +7,34 @@
 <style>
   body {
     display: flex;
-    flex-direction: column;
-    align-items: center;
     justify-content: center;
+    align-items: center;
     background: #f8f9fa;
-    height: 100vh;
     margin: 0;
+    height: 100vh;
     font-family: sans-serif;
   }
 
   .viewer-container {
     position: relative;
-    width: 600px; /* adjust as needed */
-    max-width: 90vw;
-    background: #fff;
+    width: 90%;
+    max-width: 600px;
     border-radius: 12px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
     overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+    background: #fff;
   }
 
   .viewer-container img {
     width: 100%;
+    height: auto;
     display: block;
   }
 
   .slider-container {
     position: relative;
-    padding: 20px;
     background: #f0f0f0;
+    padding: 1rem;
   }
 
   .slider-label {
@@ -45,14 +45,15 @@
 
   .value-display {
     position: absolute;
-    top: -28px;
+    top: -30px;
     transform: translateX(-50%);
     background: #343a40;
-    color: white;
-    padding: 2px 6px;
+    color: #fff;
+    padding: 3px 8px;
     border-radius: 6px;
     font-size: 13px;
     white-space: nowrap;
+    pointer-events: none;
   }
 
   input[type=range] {
@@ -69,16 +70,19 @@
 
   input[type=range]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    height: 16px;
-    width: 16px;
+    height: 18px;
+    width: 18px;
     border-radius: 50%;
     background: #007bff;
     cursor: pointer;
-    margin-top: -5px;
+    margin-top: -6px;
   }
 
-  input[type=range]:focus {
-    outline: none;
+  @media (max-width: 600px) {
+    .value-display {
+      font-size: 12px;
+      padding: 2px 6px;
+    }
   }
 </style>
 </head>
@@ -97,36 +101,25 @@
   const slider = document.getElementById('vesicleSlider');
   const image = document.getElementById('vesicleImage');
   const valueDisplay = document.getElementById('valueDisplay');
-  const totalImages = 20;
-  const minDiameter = 5;
-  const maxDiameter = 100;
-  const increment = (maxDiameter - minDiameter) / (totalImages - 1);
 
-  // Preload images
-  const images = [];
-  for (let i = 1; i <= totalImages; i++) {
+  // Hard-coded PNG file list
+  const imageFiles = [
+    'images/0001.png', 'images/0002.png', 'images/0003.png', 'images/0004.png', 'images/0005.png',
+    'images/0006.png', 'images/0007.png', 'images/0008.png', 'images/0009.png', 'images/0010.png',
+    'images/0011.png', 'images/0012.png', 'images/0013.png', 'images/0014.png', 'images/0015.png',
+    'images/0016.png', 'images/0017.png', 'images/0018.png', 'images/0019.png', 'images/0020.png'
+  ];
+
+  const diameterValues = Array.from({length: 20}, (_, i) => 5 + i * 5);
+
+  // Preload all images for smoother sliding
+  imageFiles.forEach(src => {
     const img = new Image();
-    img.src = `images/${String(i).padStart(4, '0')}.png`;
-    images.push(img);
-  }
+    img.src = src;
+  });
 
   function updateImage() {
-    const index = parseInt(slider.value);
-    const diameter = minDiameter + (index - 1) * increment;
-    image.src = `images/${String(index).padStart(4, '0')}.png`;
-    valueDisplay.textContent = `${diameter} nm`;
-
-    // Move the value display above the handle
-    const sliderRect = slider.getBoundingClientRect();
-    const handlePos = ((index - 1) / (totalImages - 1)) * sliderRect.width;
-    valueDisplay.style.left = `${handlePos}px`;
-  }
-
-  slider.addEventListener('input', updateImage);
-  window.addEventListener('resize', updateImage);
-
-  updateImage(); // initial position
-</script>
-
-</body>
-</html>
+    const index = parseInt(slider.value) - 1;
+    image.src = imageFiles[index];
+    const diameter = diameterValues[index];
+    valueDisplay.textCont
