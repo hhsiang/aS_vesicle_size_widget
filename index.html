@@ -1,139 +1,255 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Vesicle Diameter Viewer</title>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Vesicle Diameter Viewer — Diagnostic</title>
 <style>
-  body {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    background: #f8f9fa;
-    margin: 0;
-    height: 100vh;
-    font-family: sans-serif;
-  }
-
-  .viewer-container {
-    position: relative;
-    width: 90%;
-    max-width: 600px;
-    border-radius: 12px;
-    overflow: hidden;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-    background: #fff;
-  }
-
-  .viewer-container img {
-    width: 100%;
-    height: auto;
-    display: block;
-  }
-
-  .slider-container {
-    position: relative;
-    background: #f0f0f0;
-    padding: 1rem;
-  }
-
-  .slider-label {
-    text-align: center;
-    font-weight: 600;
-    margin-bottom: 8px;
-  }
-
-  .value-display {
-    position: absolute;
-    top: -30px;
-    transform: translateX(-50%);
-    background: #343a40;
-    color: #fff;
-    padding: 3px 8px;
-    border-radius: 6px;
-    font-size: 13px;
-    white-space: nowrap;
-    pointer-events: none;
-  }
-
-  input[type=range] {
-    width: 100%;
-    -webkit-appearance: none;
-    background: transparent;
-  }
-
-  input[type=range]::-webkit-slider-runnable-track {
-    height: 6px;
-    background: #ccc;
-    border-radius: 3px;
-  }
-
-  input[type=range]::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    height: 18px;
-    width: 18px;
-    border-radius: 50%;
-    background: #007bff;
-    cursor: pointer;
-    margin-top: -6px;
-  }
-
-  @media (max-width: 600px) {
-    .value-display {
-      font-size: 12px;
-      padding: 2px 6px;
-    }
-  }
+  :root { --bg:#f8f9fa; --card:#fff; --muted:#666; --accent:#007bff; }
+  html,body { height:100%; margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial; background:var(--bg); }
+  .page { min-height:100%; display:flex; align-items:center; justify-content:center; padding:24px; box-sizing:border-box; }
+  .viewer-container { width:90%; max-width:700px; background:var(--card); border-radius:12px; box-shadow:0 6px 20px rgba(0,0,0,0.12); overflow:hidden; }
+  .img-wrap { background:#222; display:flex; align-items:center; justify-content:center; min-height:320px; }
+  .img-wrap img { width:100%; height:auto; display:block; max-height:70vh; object-fit:contain; background:#111; }
+  .img-wrap .alt-overlay { color:#fff; opacity:.85; }
+  .slider-container { position:relative; padding:14px 16px; background:#f0f0f0; }
+  .slider-label { text-align:center; font-weight:600; color:#222; margin-bottom:8px; }
+  input[type=range]{ width:100%; appearance:none; background:transparent; }
+  input[type=range]::-webkit-slider-runnable-track{ height:6px; background:#ccc; border-radius:3px; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; height:18px;width:18px;border-radius:50%; background:var(--accent); margin-top:-6px; cursor:pointer; }
+  .value-display { position:absolute; top:6px; transform:translateX(-50%); background:#343a40;color:#fff;padding:4px 8px;border-radius:6px;font-size:13px; pointer-events:none; white-space:nowrap; }
+  .debug { font-size:13px; padding:10px 14px; color:var(--muted); background:#fff; border-top:1px solid #eee; }
+  .debug pre { background:#111; color:#fff; padding:8px; overflow:auto; border-radius:6px; margin:6px 0; font-size:12px; }
+  .debug .ok { color:green; font-weight:600; }
+  .debug .err { color:crimson; font-weight:600; }
+  .hint { font-size:13px; color:var(--muted); margin-top:6px; }
+  .action-link { color:var(--accent); text-decoration:underline; cursor:pointer; }
+  @media (max-width:520px){ .img-wrap{ min-height:220px } .value-display{ font-size:12px } }
 </style>
 </head>
 <body>
+  <div class="page">
+    <div class="viewer-container" role="application" aria-label="Vesicle diameter viewer">
+      <div class="img-wrap" id="imgWrap">
+        <!-- image element; alt text appears when src fails -->
+        <img id="vesicleImage" src="" alt="Vesicle image" />
+        <!-- shown only if image element has no src (keeps layout neat) -->
+      </div>
 
-<div class="viewer-container">
-  <img id="vesicleImage" src="0001.png" alt="Vesicle image">
-  <div class="slider-container">
-    <div class="slider-label">Vesicle diameter (nm)</div>
-    <div class="value-display" id="valueDisplay">5 nm</div>
-    <input type="range" id="vesicleSlider" min="1" max="20" step="1" value="1">
+      <div class="slider-container">
+        <div class="slider-label">Vesicle diameter (nm)</div>
+        <div class="value-display" id="valueDisplay">5 nm</div>
+        <input type="range" id="vesicleSlider" min="1" max="20" step="1" value="1" />
+      </div>
+
+      <div class="debug" id="debugPanel" aria-live="polite" style="display:none;">
+        <div id="debugStatus"></div>
+        <div class="hint">Attempted URLs (first successful will be used):</div>
+        <pre id="attemptList"></pre>
+        <div class="hint">If nothing loads, try clicking a failing URL to open it in a new tab:</div>
+        <div id="links"></div>
+      </div>
+    </div>
   </div>
-</div>
 
 <script>
+(function(){
   const slider = document.getElementById('vesicleSlider');
   const image = document.getElementById('vesicleImage');
   const valueDisplay = document.getElementById('valueDisplay');
+  const debugPanel = document.getElementById('debugPanel');
+  const debugStatus = document.getElementById('debugStatus');
+  const attemptList = document.getElementById('attemptList');
+  const links = document.getElementById('links');
 
-  // Hard-coded PNG file list at the same directory level as index.html
-  const imageFiles = [
-    '0001.png', '0002.png', '0003.png', '0004.png', '0005.png',
-    '0006.png', '0007.png', '0008.png', '0009.png', '0010.png',
-    '0011.png', '0012.png', '0013.png', '0014.png', '0015.png',
-    '0016.png', '0017.png', '0018.png', '0019.png', '0020.png'
+  const filenames = [
+    '0001.png','0002.png','0003.png','0004.png','0005.png',
+    '0006.png','0007.png','0008.png','0009.png','0010.png',
+    '0011.png','0012.png','0013.png','0014.png','0015.png',
+    '0016.png','0017.png','0018.png','0019.png','0020.png'
   ];
 
-  const diameterValues = Array.from({length: 20}, (_, i) => 5 + i * 5);
+  const diameters = Array.from({length:20},(_,i)=>5 + i*5);
 
-  // Preload all images for smoother sliding
-  imageFiles.forEach(src => {
-    const img = new Image();
-    img.src = src;
-  });
+  // Candidate path prefixes to try (relative variants)
+  const localPrefixes = ['', './', 'images/', './images/'];
 
+  // Build absolute dir candidates from current page location
+  function candidateDirs() {
+    const origin = window.location.origin;
+    const pathname = window.location.pathname; // e.g. /username/repo/ or /repo/
+    const pathParts = pathname.split('/');
+    // Build directory paths:
+    // 1) same directory as index.html (remove last segment if it's a file)
+    // 2) root of the site
+    // 3) pathname as-is (useful when index.html is served from /repo/)
+    let dirCandidates = [];
+
+    // If pathname ends with '/', it's a directory already
+    let dir = pathname.endsWith('/') ? pathname : pathname.substring(0, pathname.lastIndexOf('/') + 1);
+    // Add origin + dir
+    dirCandidates.push(origin + dir);
+    // Add origin + '/'
+    dirCandidates.push(origin + '/');
+    // Also try origin + dir + 'images/' in case images folder exists in same dir
+    dirCandidates.push(origin + dir + 'images/');
+    return Array.from(new Set(dirCandidates)); // unique
+  }
+
+  // Create full URL candidates for a filename by combining baseDirs and localPrefixes
+  function buildCandidatesForFile(filename) {
+    const baseDirs = candidateDirs();
+    const candidates = [];
+    // Try relative prefix + filename
+    localPrefixes.forEach(pref => candidates.push(pref + filename));
+    // Then try absolute baseDirs + filename (both with and without 'images/' addition)
+    baseDirs.forEach(d => {
+      // ensure trailing slash exists
+      const base = d.endsWith('/') ? d : d + '/';
+      candidates.push(base + filename);
+      candidates.push(base + 'images/' + filename);
+    });
+    return Array.from(new Set(candidates));
+  }
+
+  // Try to detect a working prefix for the first image (then reuse for rest)
+  async function detectWorkingPrefix() {
+    const candidates = buildCandidatesForFile(filenames[0]);
+    const tried = [];
+    for (const c of candidates) {
+      tried.push(c);
+      try {
+        // Use HEAD first (faster than GET), but fallback to GET if HEAD is not allowed.
+        const headResp = await fetch(c, { method: 'HEAD' });
+        if (headResp && headResp.ok) {
+          return { successUrlBase: deriveBaseFromCandidate(c, filenames[0]), tried };
+        }
+        // Some servers (or GitHub raw) may reject HEAD; try GET as fallback but only request small bytes
+        const getResp = await fetch(c, { method: 'GET' });
+        if (getResp && getResp.ok) {
+          return { successUrlBase: deriveBaseFromCandidate(c, filenames[0]), tried };
+        }
+      } catch (err) {
+        // fetch can throw for CORS or network issues; record and continue
+      }
+    }
+    return { successUrlBase: null, tried };
+  }
+
+  // If candidate is an absolute URL ending with filename, return the directory portion; else return candidate prefix
+  function deriveBaseFromCandidate(candidate, filename) {
+    // If candidate ends with filename, strip the filename to get base
+    if (candidate.endsWith(filename)) {
+      return candidate.slice(0, candidate.length - filename.length);
+    }
+    // otherwise return candidate as prefix
+    return candidate;
+  }
+
+  // On failure, show debug info with clickable links
+  function showDebug(tried, note) {
+    debugPanel.style.display = 'block';
+    debugStatus.innerHTML = `<span class="err">No image found.</span> ${note ? note : ''}`;
+    attemptList.textContent = tried.join('\n');
+    links.innerHTML = '';
+    tried.forEach(u => {
+      const a = document.createElement('a');
+      a.textContent = u;
+      a.href = u;
+      a.target = '_blank';
+      a.rel = 'noopener noreferrer';
+      a.style.display = 'block';
+      a.style.marginTop = '6px';
+      a.className = 'action-link';
+      links.appendChild(a);
+    });
+  }
+
+  // Initialize viewer: detect base then preload and set image
+  async function init() {
+    // Show a minimal loading message in debug area while probing
+    debugPanel.style.display = 'block';
+    debugStatus.innerHTML = 'Probing for image paths…';
+    attemptList.textContent = '';
+    links.innerHTML = '';
+
+    const { successUrlBase, tried } = await detectWorkingPrefix();
+
+    if (!successUrlBase) {
+      // nothing worked — show UI to help debug
+      showDebug(tried, 'Tried multiple relative and absolute locations.');
+      // Set a visible placeholder by leaving image.src blank (so alt text shows)
+      console.warn('Image probe failed. Tried:', tried);
+      return;
+    }
+
+    // Hide debug once we have a working base
+    debugPanel.style.display = 'none';
+    console.log('Detected base URL for images:', successUrlBase);
+
+    // Build resolved paths for all filenames using the detected base
+    const resolved = filenames.map(fn => successUrlBase + fn);
+
+    // Preload a few surrounding images (first and second) for snappy startup
+    resolved.slice(0,4).forEach(u=>{
+      const img = new Image();
+      img.src = u;
+    });
+
+    // Store resolved list and wire slider behavior
+    window.__RESOLVED_IMAGES = resolved;
+    updateImage(); // set initial image
+
+    // Preload rest in background (non-blocking)
+    setTimeout(()=>resolved.forEach(u=>{ const i=new Image(); i.src=u; }), 500);
+  }
+
+  // Update displayed image based on slider index
   function updateImage() {
-    const index = parseInt(slider.value) - 1;
-    image.src = imageFiles[index];
-    const diameter = diameterValues[index];
+    const idx = parseInt(slider.value,10) - 1;
+    const diameter = diameters[idx];
     valueDisplay.textContent = `${diameter} nm`;
 
+    const resolved = window.__RESOLVED_IMAGES;
+    if (!resolved || !resolved[idx]) {
+      // no resolved path available yet — show alt text and debug
+      image.removeAttribute('src');
+      image.alt = 'Vesicle image (not found)';
+      // If debug hidden, display guidance
+      if (debugPanel.style.display === 'none') {
+        debugPanel.style.display = 'block';
+        debugStatus.textContent = 'Images not resolved yet. If you just uploaded files, wait a few seconds and refresh.';
+      }
+      return;
+    }
+
+    image.src = resolved[idx];
+    image.alt = `Vesicle image ${filenames[idx]}`;
+
     // Position the value display above the handle
-    const sliderRect = slider.getBoundingClientRect();
-    const handlePos = (index / (imageFiles.length - 1)) * sliderRect.width;
-    valueDisplay.style.left = `${handlePos}px`;
+    requestAnimationFrame(()=>{
+      const sliderRect = slider.getBoundingClientRect();
+      const handlePos = (idx / (filenames.length - 1)) * sliderRect.width;
+      // clamp within slider width to avoid overflow
+      const clamped = Math.max(8, Math.min(sliderRect.width - 8, handlePos));
+      valueDisplay.style.left = `${clamped}px`;
+    });
   }
+
+  // image error handler
+  image.addEventListener('error', (ev)=>{
+    console.error('Image load error for src=', image.src);
+    // reveal debug that lists resolved images for direct checking
+    const resolved = window.__RESOLVED_IMAGES || [];
+    showDebug(resolved.length ? resolved : buildCandidatesForFile(filenames[0]), 'Image element reported an error while loading the chosen URL.');
+  });
 
   slider.addEventListener('input', updateImage);
   window.addEventListener('resize', updateImage);
-  updateImage();
-</script>
 
+  // Start detection
+  init();
+})();
+</script>
 </body>
 </html>
