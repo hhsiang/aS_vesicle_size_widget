@@ -89,7 +89,7 @@
 <body>
 
 <div class="viewer-container">
-  <img id="vesicleImage" src="images/0001.png" alt="Vesicle image">
+  <img id="vesicleImage" src="0001.png" alt="Vesicle image">
   <div class="slider-container">
     <div class="slider-label">Vesicle diameter (nm)</div>
     <div class="value-display" id="valueDisplay">5 nm</div>
@@ -102,12 +102,12 @@
   const image = document.getElementById('vesicleImage');
   const valueDisplay = document.getElementById('valueDisplay');
 
-  // Hard-coded PNG file list
+  // Hard-coded PNG file list at the same directory level as index.html
   const imageFiles = [
-    'images/0001.png', 'images/0002.png', 'images/0003.png', 'images/0004.png', 'images/0005.png',
-    'images/0006.png', 'images/0007.png', 'images/0008.png', 'images/0009.png', 'images/0010.png',
-    'images/0011.png', 'images/0012.png', 'images/0013.png', 'images/0014.png', 'images/0015.png',
-    'images/0016.png', 'images/0017.png', 'images/0018.png', 'images/0019.png', 'images/0020.png'
+    '0001.png', '0002.png', '0003.png', '0004.png', '0005.png',
+    '0006.png', '0007.png', '0008.png', '0009.png', '0010.png',
+    '0011.png', '0012.png', '0013.png', '0014.png', '0015.png',
+    '0016.png', '0017.png', '0018.png', '0019.png', '0020.png'
   ];
 
   const diameterValues = Array.from({length: 20}, (_, i) => 5 + i * 5);
@@ -122,4 +122,18 @@
     const index = parseInt(slider.value) - 1;
     image.src = imageFiles[index];
     const diameter = diameterValues[index];
-    valueDisplay.textCont
+    valueDisplay.textContent = `${diameter} nm`;
+
+    // Position the value display above the handle
+    const sliderRect = slider.getBoundingClientRect();
+    const handlePos = (index / (imageFiles.length - 1)) * sliderRect.width;
+    valueDisplay.style.left = `${handlePos}px`;
+  }
+
+  slider.addEventListener('input', updateImage);
+  window.addEventListener('resize', updateImage);
+  updateImage();
+</script>
+
+</body>
+</html>
